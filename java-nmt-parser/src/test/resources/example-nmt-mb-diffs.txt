@@ -1,0 +1,49 @@
+7:
+
+Native Memory Tracking:
+
+(Omitting categories weighting less than 1MB)
+
+Total: reserved=3575MB +67MB, committed=320MB +67MB
+
+-                 Java Heap (reserved=1986MB, committed=128MB)
+                            (mmap: reserved=1986MB, committed=128MB)
+
+-                     Class (reserved=1024MB, committed=0MB)
+                            (classes #806)
+                            (  instance classes #673, array classes #133)
+                            (mmap: reserved=1024MB, committed=0MB)
+                           : (  Metadata)
+                            (    reserved=64MB, committed=0MB)
+                            (    used=0MB)
+                            (    waste=0MB =25.21%)
+                           : (  Class space)
+                            (    reserved=1024MB, committed=0MB)
+                            (    used=0MB)
+                            (    waste=0MB =74.52%)
+
+-                    Thread (reserved=36MB, committed=1MB)
+                            (thread #18)
+                            (stack: reserved=36MB, committed=1MB)
+
+-                      Code (reserved=242MB, committed=7MB)
+                            (mmap: reserved=242MB, committed=7MB)
+
+-                        GC (reserved=90MB, committed=54MB)
+                            (malloc=19MB #983)
+                            (mmap: reserved=71MB, committed=35MB)
+
+-                  Internal (reserved=1MB, committed=1MB)
+                            (malloc=1MB #1302 +1)
+
+-                     Other (reserved=114MB +67MB, committed=114MB +67MB)
+                            (malloc=114MB +67MB #2 +1)
+
+-                    Symbol (reserved=1MB, committed=1MB)
+                            (malloc=1MB #117)
+
+-        Shared class space (reserved=16MB, committed=13MB)
+                            (mmap: reserved=16MB, committed=13MB)
+
+-                 Metaspace (reserved=64MB, committed=0MB)
+                            (mmap: reserved=64MB, committed=0MB)

@@ -1,0 +1,23 @@
+services:
+  loiter:
+    image: java-loiter:latest
+    build:
+      context: ./loiter/src
+      dockerfile: Dockerfile
+  memory-monitor:
+    image: jvm-memory-monitor:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    pid: service:loiter
+    command:
+      - --dump-interval
+      - "10"
+      - --baseline
+      - --no-heap-dumps
+      - --limit
+      - "300"
+      - --cleanup-interval
+      - "30"
+    restart: no
+    
