@@ -13,8 +13,8 @@ services:
     command:
       - --dump-interval
       - "10"
-      - --baseline
       - --no-heap-dumps
+      - --baseline
       - --limit
       - "300"
       - --cleanup-interval

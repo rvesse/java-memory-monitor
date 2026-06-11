@@ -26,7 +26,9 @@ from a Java Process.  It is designed to be run as a debug container that is shar
 namespace of the JVM application whose memory usage you wish to monitor.
 
 By default the JVM process to monitor is auto-detected by finding the first JVM process reported
-by the jps command (other than jps itself!)
+by the jps command (other than jps itself!).  If running in a non-container environment where 
+there are multiple Java processes then you can use the -j/--java-pid option to specify the Java
+process to monitor explicitly.
 
 OPTIONS
 

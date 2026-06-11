@@ -1,14 +1,5 @@
 #!/usr/bin/env bash
 
-NAMESPACE=$1
-POD=$2
-CONTAINER=$3
-DUMP_LOCATION=${4:-/tmp/dumps}
-DUMP_INTERVAL=${5:-180}
-DEBUG_CONTAINER=${6:-jvm-memory-monitor}
-DEBUG_CONTAINER_IMAGE=${7:-rvesse/jvm-memory-monitor:latest}
-shift 7
-
 function blankLine() {
     echo ""
 }
@@ -21,35 +12,197 @@ function title() {
   blankLine
 }
 
-title "JVM Memory Monitor for Kubernetes"
+# Command Line Argument Handling 
+function showHelp() {
+  title "jvmKubernetesMemoryMonitor.sh Usage"
+  blankLine
+  cat <<EOF
+This script launches a Kubernetes ephemeral debug container into an existing 
+Kubernetes (K8S) pod in your K8S cluster.  By default this is a container
+packaging the jvmMemoryMonitor.sh script in this repository whose help describes
+it's purpose and arguments.
 
-if [ -z "${NAMESPACE}" ]; then
-  echo "MUST specify a Kubernetes Namespace as the first argument"
+Once the debug container is launched, or if it already exists, this script monitors
+it's log output for messages indicating a new memory dump is available.  Those memory
+dumps are then copied out of the K8S containers to your local machine for inspection
+at your leisure.  You can customise the arguments passed to the debug container as
+described later in USAGE EXAMPLES.
+
+The script is idempotent in that if run with the same arguments against a pod that has
+previously had the debug container attached it will skip transferring memory dumps it
+already has locally and just resume from the next available dump file.
+
+OPTIONS
+
+  -c <container>
+  --contaner <container>
+
+    Specifies the container within the pod to which you wish to attach the debug 
+    container.  This is the container whose process namespace will be shared with
+    the debug container and thus dictates which Java processes (if any) are 
+    visible to the debug container.
+
+  --debug-container <name>
+
+    Specifies a name for the debug container. As K8S debug container names must be
+    unique within a pod if the container terminates for any reason you will need
+    to re-run this script with a different name provided, jvm-memory-monitor is the
+    default debug container name used.
+
+  --debug-container-image <image>
+
+    Specifies a custom image for the debug container.  The default image is 
+    rvesse/jvm-memory-monitor:latest but may be customised if you want to use
+    a custom image.  If using a custom image other aspects of this script, e.g.
+    automated retrieval of memory dumps to the local machine, may not function.
+
+  --help
+
+    Prints this help message and exits.
+
+  -l <directory>
+  --dump-location <directory>
+
+    Specifies the directory on your local machine to which dump files should be 
+    transferred, by default this is the /tmp/dumps directory.
+
+  -n <namespace>
+  --namespace <namespace>
+
+    Specifies the K8S namespace where the pod you wish to attach the debug 
+    container to is running.
+
+  -p <pod>
+  --pod <pod>
+
+    Specifies the K8S pod you wish to attach the debug container to.
+
+  --
+
+    Separates options to this script from options you wish to pass into the debug
+    container.  Any options seen after this are not interpreted as options to this
+    script but instead passed as arguments to the debug container, see USAGE
+    EXAMPLES below for some examples of this.
+
+USAGE EXAMPLES
+
+  Monitoring memory using default options:
+
+    ./jvmKubernetesMemoryMonitor.sh --namespace my-namespace --pod my-pod \\
+      --container my-container
+
+  Monitoring native memory only with custom dump interval:
+
+    ./jvmKubernetesMemoryMonitor.sh --namespace my-namespace --pod my-pod \\
+      --container my-container -- --dump-interval 60 --no-heap-dumps
+
+  Monitoring native memory detail with diffs:
+
+      ./jvmKubernetesMemoryMonitor.sh --namespace my-namespace --pod my-pod \\
+      --container my-container -- --no-heap-dumps --baseline --detail
+EOF
+}
+
+# NB - This requires proper GNU getopt with --long argument support, on some OSes e.g. Darwin, they have the original
+# getopt without this support in which case this will fail and not set any arguments and then we'll bail out in our
+# argument checks after the argument processing loop
+TEMP=$(getopt -o c:l:n:p: \
+              --long container:,debug-container:,debug-container-image:,dump-location:,namespace:,pod:,help \
+              -n 'jvmKubernetesMemoryMonitor.sh' -- "$@")
+
+if [ $? != 0 ] ; then 
+  echo "Bad Arguments encountered" >&2
   exit 1
 fi
+eval set -- "$TEMP"
+
+NAMESPACE=default
+POD=
+CONTAINER=
+DUMP_LOCATION=/tmp/dumps
+DEBUG_CONTAINER=jvm-memory-monitor
+DEBUG_CONTAINER_IMAGE=rvesse/jvm-memory-monitor:latest
+
+while [ true ]; do
+  case "$1" in
+    -c | --container )
+      CONTAINER=$2
+      shift 2
+      ;;
+    --help )
+      showHelp
+      exit 0
+      ;;
+    -l | --dump-location )
+      DUMP_LOCATION=$2
+      shift 2
+      ;;
+    -n | --namespace )
+      NAMESPACE=$2
+      shift 2
+      ;;
+    -p | --pod )
+      POD=$2
+      shift 2
+      ;;
+    --debug-container )
+      DEBUG_CONTAINER=$2
+      shift 2
+      ;;
+    --debug-container-image )
+      DEBUG_CONTAINER_IMAGE=$2
+      shift 2
+      ;;
+    -- )
+      shift
+      break
+      ;;
+    * ) 
+      echo "Unexpected option $1, ignored" >&2
+      break 
+      ;;
+  esac
+done
+
+title "JVM Memory Monitor for Kubernetes"
 
 if [ -z "${POD}" ]; then
-  echo "MUST specify a Kubernetes Pod Name as the second argument"
+  echo "MUST specify a Kubernetes Pod Name via the -p/--pod option"
+  exit 2
+elif ! kubectl get pod -n "${NAMESPACE}" "${POD}" >/dev/null 2>&1; then
+  echo "Kubenetes Pod ${POD} does not exist in namespace ${NAMESPACE}"
   exit 2
 fi
 
 if [ -z "${CONTAINER}" ]; then
-  echo "MUST specify a Container Name as the third argument"
+  echo "MUST specify a Container Name via the -c/--container option"
   exit 3
 fi
 
 mkdir -p ${DUMP_LOCATION}
 if [ ! -d "${DUMP_LOCATION}" ]; then
-  echo "DUMP_LOCATION ${DUMP_LOCATION} is not a directory"
+  echo "DUMP_LOCATION ${DUMP_LOCATION} is not a directory or could not be created"
   exit 4
 fi
 
 echo "Monitoring JVM memory for container ${CONTAINER} in pod ${POD} in namespace ${NAMESPACE} every ${DUMP_INTERVAL} seconds to ${DUMP_LOCATION}"
+echo "Using debug container ${DEBUG_CONTAINER} with image ${DEBUG_CONTAINER_IMAGE}"
 echo ""
 
 function onInterrupt() {
     echo "Stopping monitoring JVM memory..."
     exit 0
+}
+
+function echorun() {
+  echo "$@"
+  "$@"
+}
+
+function findDebugContainerStatus() {
+  local DESIRED_STATUS=${1:-terminated}
+  kubectl get pod -n ${NAMESPACE} ${POD} \
+                 -o jsonpath="{.status.ephemeralContainerStatuses[?(@.name=='${DEBUG_CONTAINER}')].state.${DESIRED_STATUS}}" 2>&1
 }
 
 # Detect whether the relevant debug container is already attached to the target pod, if not we will need to use kubectl 
@@ -58,12 +211,37 @@ kubectl get pod -n ${NAMESPACE} ${POD} \
         -o jsonpath="{.spec.ephemeralContainers[*].name}" | grep "${DEBUG_CONTAINER}" > /dev/null 2>&1
 if [ $? -ne 0 ]; then
   echo "Debug container ${DEBUG_CONTAINER} not found in pod ${POD}, attaching it now..."
-  kubectl debug -n ${NAMESPACE} --image=${DEBUG_CONTAINER_IMAGE} \
+  echorun kubectl debug -n ${NAMESPACE} --image=${DEBUG_CONTAINER_IMAGE} \
           --image-pull-policy Always \
           --container=${DEBUG_CONTAINER} --target=${CONTAINER} ${POD} \
-          --arguments-only -- --dump-interval ${DUMP_INTERVAL} "$@"
+          --arguments-only -- "$@"
   echo "Waiting to allow debug container to start running..."
-  sleep 60
+  START=${SECONDS}
+  while [ true ]; do
+    sleep 5
+    STATUS=$(findDebugContainerStatus "running")
+    if [ -n "${STATUS}" ]; then
+      echo "Debug container now running after $(( ${SECONDS} - ${START})) seconds!"
+      break
+    fi
+    STATUS=$(findDebugContainerStatus)
+    if [ -n "${STATUS}" ]; then
+      echo "Debug container terminated unexpectedly, see logs for details:"
+      blankLine
+      echo "${STATUS}"
+      blankLine
+      kubectl logs -n ${NAMESPACE} -c ${DEBUG_CONTAINER} ${POD}
+      blankLine
+      exit 1
+    fi
+
+    ELAPSED=$(( ${SECONDS} - ${START}))
+    if [ ${ELAPSED} -gt 60 ]; then
+      echo "Debug container failed to reach running state within 60 seconds!"
+      exit 1
+    fi
+  
+  done
   echo "Debug container ${DEBUG_CONTAINER} should now be running in pod ${POD}, starting to retrieve heap dumps..."
 else
   echo "Debug container ${DEBUG_CONTAINER} already attached to pod ${POD}, continuing to retrieve heap dumps..."
@@ -166,8 +344,7 @@ done < <(kubectl logs -n ${NAMESPACE} ${POD} -c ${DEBUG_CONTAINER} -f)
 echo "No further dump files available, the debug container may be stopped/failed"
 
 # Check the status of the debug container
-STATUS=$(kubectl get pod -n ${NAMESPACE} ${POD} \
-                 -o jsonpath="{.status.ephemeralContainerStatuses[?(@.name=='${DEBUG_CONTAINER}')].state.terminated}" 2>&1)
+STATUS=$()
 if [ -n "${STATUS}" ]; then
   echo "Debug container ${DEBUG_CONTAINER} has exited:"
   echo "${STATUS}" | jq
