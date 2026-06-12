@@ -50,6 +50,9 @@ jobs:
         shell: bash
         run: |
           CONTEXT_PATH=$(dirname ${{ matrix.dockerfile }})
+          if [ -z "${CONTEXT_PATH}" ]; then
+            CONTEXT_PATH="."
+          fi
           echo "path=${CONTEXT_PATH}" >> $GITHUB_OUTPUT
 
       - name: Fail if parameters not detected
@@ -59,7 +62,7 @@ jobs:
             echo "::error::Failed to detect image name from Dockerfile ${{ matrix.dockerfile }}"
             exit 1
           fi
-          if [ -z "${{ steps.detect-context-path.outputs.name }}" ]; then
+          if [ -z "${{ steps.detect-context-path.outputs.path }}" ]; then
             echo "::error::Failed to detect context Path"
             exit 2
           fi
