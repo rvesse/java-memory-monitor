@@ -112,5 +112,5 @@ function buildAndPushImage() {
   fi
 }
 
-buildAndPushImage "jvm-memory-monitor" "Dockerfile"
+buildAndPushImage "java-memory-monitor" "Dockerfile"
 buildAndPushImage "java-loiter" "loiter/src/Dockerfile"

@@ -12,6 +12,13 @@ function title() {
   blankLine
 }
 
+NAMESPACE=default
+POD=
+CONTAINER=
+DUMP_LOCATION=/tmp/dumps
+DEBUG_CONTAINER=jvm-memory-monitor
+DEBUG_CONTAINER_IMAGE=rvesse/java-memory-monitor:latest
+
 # Command Line Argument Handling 
 function showHelp() {
   title "jvmKubernetesMemoryMonitor.sh Usage"
@@ -46,13 +53,13 @@ OPTIONS
 
     Specifies a name for the debug container. As K8S debug container names must be
     unique within a pod if the container terminates for any reason you will need
-    to re-run this script with a different name provided, jvm-memory-monitor is the
+    to re-run this script with a different name provided, ${DEBUG_CONTAINER} is the
     default debug container name used.
 
   --debug-container-image <image>
 
     Specifies a custom image for the debug container.  The default image is 
-    rvesse/jvm-memory-monitor:latest but may be customised if you want to use
+    ${DEBUG_CONTAINER_IMAGE} but may be customised if you want to use
     a custom image.  If using a custom image other aspects of this script, e.g.
     automated retrieval of memory dumps to the local machine, may not function.
 
@@ -64,7 +71,7 @@ OPTIONS
   --dump-location <directory>
 
     Specifies the directory on your local machine to which dump files should be 
-    transferred, by default this is the /tmp/dumps directory.
+    transferred, by default this is the ${DUMP_LOCATION} directory.
 
   -n <namespace>
   --namespace <namespace>
@@ -115,13 +122,6 @@ if [ $? != 0 ] ; then
   exit 1
 fi
 eval set -- "$TEMP"
-
-NAMESPACE=default
-POD=
-CONTAINER=
-DUMP_LOCATION=/tmp/dumps
-DEBUG_CONTAINER=jvm-memory-monitor
-DEBUG_CONTAINER_IMAGE=rvesse/jvm-memory-monitor:latest
 
 while [ true ]; do
   case "$1" in
@@ -185,7 +185,7 @@ if [ ! -d "${DUMP_LOCATION}" ]; then
   exit 4
 fi
 
-echo "Monitoring JVM memory for container ${CONTAINER} in pod ${POD} in namespace ${NAMESPACE} every ${DUMP_INTERVAL} seconds to ${DUMP_LOCATION}"
+echo "Monitoring JVM memory for container ${CONTAINER} in pod ${POD} in namespace ${NAMESPACE} collecting dumps in ${DUMP_LOCATION}"
 echo "Using debug container ${DEBUG_CONTAINER} with image ${DEBUG_CONTAINER_IMAGE}"
 echo ""
 

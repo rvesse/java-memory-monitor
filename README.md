@@ -161,3 +161,6 @@ pushed as `your-repository/java-memory-monitor:latest` e.g.
 ```bash
 ./docker-build.sh your-repository
 ```
+
+> **NB** The script builds only for JDK 21 by default, you can build images directly using the build arg `JDK_VERSION`
+> to build for alternative JDKs
