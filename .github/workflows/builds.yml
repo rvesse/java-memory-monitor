@@ -7,7 +7,7 @@ on:
         - '**'
 jobs:
   build-memory-monitor:
-    name: Build Images for JDK ${{ matrix.jdk }}
+    name: Build Images for JDK ${{ matrix.jdk }} with ${{ matrix.dockerfile }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
