@@ -8,6 +8,8 @@ on:
 jobs:
   build-memory-monitor:
     name: Build Images for JDK ${{ matrix.jdk }} with ${{ matrix.dockerfile }}
+    # Don't run workflow for Dependabot PRs as it doesn't have access to Docker credentials
+    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
