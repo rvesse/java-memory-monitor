@@ -97,7 +97,7 @@ Run the script with the `--help` option for full script help.
 
 ## Development Helpers
 
-### Loiter
+### Loiter
 
 The `java-loiter:latest` image, and the `Loiter` Java application are a trivial toy Java application used to help test
 and develop the [`jvmMemoryMonitor.sh`](#jvmmemorymonitorsh) script.

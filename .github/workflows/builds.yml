@@ -1,0 +1,90 @@
+name: Image Builds
+on:
+    push:
+      branches:
+        - '**'
+      tags:
+        - '**'
+jobs:
+  build-memory-monitor:
+    name: Build Images for JDK ${{ matrix.jdk }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        jdk:
+          - 17
+          - 21
+          - 24
+        dockerfile:
+          - Dockerfile
+          - src/Dockerfile
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v5
+        name: Checkout
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4.0.0
+        with:
+          platforms: all
+
+      - name: Set up Docker buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v4.0.0
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4.1.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Detect Base Image Name
+        id: detect-image-name
+        shell: bash
+        run: |
+          NAME=$(head -n 1 ${{ matrix.dockerfile }} | awk '{print $2}')
+          echo "name=${NAME}" >> $GITHUB_OUTPUT
+
+      - name: Fail if no Image Name detected
+        shell: bash
+        run: |
+          if [ -z "${{ steps.detect-image-name.outputs.name }}" ]; then
+            echo "::error::Failed to detect image name from Dockerfile ${{ matrix.dockerfile }}"
+            exit 1
+          fi
+
+      - name: Prepare Docker Image Names and Tags
+        id: meta
+        uses: docker/metadata-action@v6.0.0
+        with:
+          # Defines the base image names in repository/name format
+          images: |
+            rvesse/${{ steps.detect-image-name.outputs.name }}
+          # Manually handling latest below so disabling automatic latest handling
+          flavor: |
+            latest=true
+          # Creates tags based on various criteria
+          #
+          # For any tag, and more specifically semver tags i.e. v1.2.3, use the Git tag/semver as-is with 
+          # jdk-<jdk-version> appended
+          # jdk-<jdk-version> for the JDK version used
+          # A latest tag, if and only if, this commit is on the main branch and for JDK 21
+          tags: |
+            type=ref,event=tag-jdk${{ matrix.jdk }}
+            type=semver,pattern={{version}}-jdk${{matrix.jdk}}
+            type=raw,value=jdk-${{ matrix.jdk }}
+            type=raw,value=latest,enable=${{ github.ref_name == 'main' && matrix.jdk == '21' }}
+
+      - name: Build, tag, and push image to authenticated docker registry
+        id: build-images
+        uses: docker/build-push-action@v7.1.0
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          platforms: linux/amd64,linux/arm64
+          # Dependabot triggered PRs don't have credentials to push images
+          push: ${{ github.actor != 'dependabot[bot]' }}
+          context: .
+          file: ${{ matrix.dockerfile }}
+          tags: ${{ steps.meta.outputs.tags }}
+          build-args: |
+            JDK_VERSION=${{ matrix.jdk }}
