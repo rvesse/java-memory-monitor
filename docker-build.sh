@@ -80,7 +80,7 @@ function buildImage() {
     DOCKER_ARGS+=( ${EXTRA_BUILD_ARGS} )
   fi
   DOCKER_ARGS+=(
-    "."
+    $(dirname "${SCRIPT_DIR}/${DOCKERFILE}")
   )
 
   echo "Building Docker Image ${IMAGE_NAME}:${DOCKER_TAG}..."

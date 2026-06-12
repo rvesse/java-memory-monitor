@@ -1,8 +1,8 @@
 # Java Memory Monitor for Kubernetes
 
 This repository provides scripts and images designed to solve the problem of monitoring memory usage of a Java
-application running in a K8S container when that container has a minimal image that omits standard Java debug tools like
-`jcmd`, `jmap` etc.
+application running in a K8S container when that application container has a minimal image that omits standard Java
+debug tools like `jcmd`, `jmap` etc.
 
 It provides two components that support this, plus additional [Development Helpers](#development-helpers).
 
@@ -103,8 +103,8 @@ The `java-loiter:latest` image, and the `Loiter` Java application are a trivial 
 and develop the [`jvmMemoryMonitor.sh`](#jvmmemorymonitorsh) script.
 
 This app sits in an infinite loop, every iteration it allocates a 32-128MB direct byte buffer (to simulate using some
-off-heap memory) and then sleeps for a while.  Every 10th iteration it forces a GC which gives the JVM chance to free up
-unused off-heap memory.
+off-heap memory), allocates a large array of on heap objects, and then sleeps for a while before releasing both memory
+allocations.  Every 10th iteration it forces a GC which gives the JVM chance to free up unused off-heap memory.
 
 This can be built either via the [Docker Compose](#docker-compose) file or the [`docker-build.sh`](#docker-buildsh)
 script.
