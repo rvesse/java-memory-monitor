@@ -70,8 +70,8 @@ jobs:
           # jdk-<jdk-version> for the JDK version used
           # A latest tag, if and only if, this commit is on the main branch and for JDK 21
           tags: |
-            type=ref,event=tag-jdk${{ matrix.jdk }}
-            type=semver,pattern={{version}}-jdk${{matrix.jdk}}
+            type=ref,event=tag,suffix=-jdk${{ matrix.jdk }}
+            type=semver,pattern={{version}},suffix=-jdk${{matrix.jdk}}
             type=raw,value=jdk-${{ matrix.jdk }}
             type=raw,value=latest,enable=${{ github.ref_name == 'main' && matrix.jdk == '21' }}
 
