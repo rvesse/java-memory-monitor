@@ -5,6 +5,7 @@ import lombok.*;
 import lombok.extern.jackson.Jacksonized;
 
 import java.util.List;
+import java.util.Objects;
 
 @Getter
 @ToString
@@ -50,5 +51,18 @@ public class LabelledMemoryAmount {
 
     public boolean hasCounts() {
         return this.counts != null && !this.counts.isEmpty();
+    }
+
+    public LabelledMemoryAmount getSubCategory(String label) {
+        if (!hasSubCategories()) {
+            return null;
+        }
+
+        for (LabelledMemoryAmount subCategory : this.subCategories) {
+            if (Objects.equals(subCategory.getLabel(), label)) {
+                return subCategory;
+            }
+        }
+        return null;
     }
 }

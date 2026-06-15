@@ -21,33 +21,48 @@ public class MarkdownReportWriter implements NMTReportWriter {
         this(MemoryUnit.MB);
     }
 
-    @Override
-    public void write(NMTReport report, OutputStream output) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8))) {
-            writer.write("# Java PID " + report.getPid());
-            newLine(writer);
-            newLine(writer);
-            writeMemoryUsage(writer, report.getMemoryUsage(), 2);
-            writer.flush();
+    private record WriterContext(BufferedWriter writer) implements AutoCloseable {
+        private void write(String value) throws IOException {
+            this.writer.write(value);
+        }
+
+        private void newLine() throws IOException {
+            this.writer.write('\n');
+        }
+
+        @Override
+        public void close() throws IOException {
+            this.writer.flush();
+            this.writer.close();
+        }
+
+        public void write(char c) throws IOException {
+            this.writer.write(c);
         }
     }
 
-    private static void newLine(BufferedWriter writer) throws IOException {
-        writer.write('\n');
+    @Override
+    public void write(NMTReport report, OutputStream output) throws IOException {
+        try (WriterContext writer = new WriterContext(new BufferedWriter(new OutputStreamWriter(output, StandardCharsets.UTF_8)))) {
+            writer.write("# Java PID " + report.getPid());
+            writer.newLine();
+            writer.newLine();
+            writeMemoryUsage(writer, report.getMemoryUsage(), 2);
+        }
     }
 
-    private void writeMemoryUsage(BufferedWriter writer, LabelledMemoryAmount memoryUsage, int headerLevel) throws
+    private void writeMemoryUsage(WriterContext writer, LabelledMemoryAmount memoryUsage, int headerLevel) throws
             IOException {
         writer.write(StringUtils.repeat('#', headerLevel));
         writer.write(' ');
         writer.write(memoryUsage.getLabel());
-        newLine(writer);
-        newLine(writer);
+        writer.newLine();
+        writer.newLine();
         writeMemoryAmount(writer, "Reserved", memoryUsage.getReserved(), memoryUsage.getReservedDiff());
         writeMemoryAmount(writer, "Committed", memoryUsage.getCommitted(), memoryUsage.getCommittedDiff());
         if (memoryUsage.hasDetailedMemoryUsages() || memoryUsage.hasDetailedMemoryUsages()) {
             writer.write("Detailed Memory Usage:");
-            newLine(writer);
+            writer.newLine();
             if (memoryUsage.hasDetailedMemoryUsages()) {
                 for (DetailedMemoryUsage detailedMemoryUsage : memoryUsage.getDetailedMemoryUsages()) {
                     writeDetailedMemoryUsage(writer, detailedMemoryUsage);
@@ -63,7 +78,7 @@ public class MarkdownReportWriter implements NMTReportWriter {
 
         if (memoryUsage.hasCounts()) {
             writer.write("Counts: ");
-            newLine(writer);
+            writer.newLine();
             for (TaggedCount count : memoryUsage.getCounts()) {
                 writeCount(writer, count);
             }
@@ -71,18 +86,18 @@ public class MarkdownReportWriter implements NMTReportWriter {
 
         if (memoryUsage.hasSubCategories()) {
             for (LabelledMemoryAmount subCategory : memoryUsage.getSubCategories()) {
-                newLine(writer);
+                writer.newLine();
                 writeMemoryUsage(writer, subCategory, headerLevel + 1);
             }
         }
     }
 
-    private void writeDetailedMemoryUsage(BufferedWriter writer, DetailedMemoryUsage detailedMemoryUsage) throws
+    private void writeDetailedMemoryUsage(WriterContext writer, DetailedMemoryUsage detailedMemoryUsage) throws
             IOException {
         writer.write("- ");
         writer.write(detailedMemoryUsage.getTag());
         writer.write(':');
-        newLine(writer);
+        writer.newLine();
         writeMemoryAmount(writer, "  - Reserved Memory", detailedMemoryUsage.getReserved(), null);
         writeMemoryAmount(writer, "  - Committed Memory", detailedMemoryUsage.getCommitted(), null);
         if (detailedMemoryUsage.getPeak() != null) {
@@ -90,11 +105,11 @@ public class MarkdownReportWriter implements NMTReportWriter {
         }
     }
 
-    private void writeTaggedMemoryUsage(BufferedWriter writer, TaggedMemoryUsage taggedMemoryUsage) throws IOException {
+    private void writeTaggedMemoryUsage(WriterContext writer, TaggedMemoryUsage taggedMemoryUsage) throws IOException {
         writer.write("- ");
         writer.write(taggedMemoryUsage.getTag());
         writer.write(':');
-        newLine(writer);
+        writer.newLine();
         writeMemoryAmount(writer, "  - Memory", taggedMemoryUsage.getUsage(), taggedMemoryUsage.getDiff());
         writer.write("  - Allocations: ");
         writer.write(String.format("%,d", taggedMemoryUsage.getCount()));
@@ -106,7 +121,7 @@ public class MarkdownReportWriter implements NMTReportWriter {
             writer.write(String.format("%,d", taggedMemoryUsage.getCountDiff()));
             writer.write(")");
         }
-        newLine(writer);
+        writer.newLine();
         if (taggedMemoryUsage.hasPeak()) {
             writeMemoryAmount(writer, "  - Peak Memory", taggedMemoryUsage.getPeak(), null);
             writer.write("  - Peak Allocations: ");
@@ -119,19 +134,19 @@ public class MarkdownReportWriter implements NMTReportWriter {
                 writer.write(String.format("%,d", taggedMemoryUsage.getPeakCountDiff()));
                 writer.write(")");
             }
-            newLine(writer);
+            writer.newLine();
         }
     }
 
-    private void writeCount(BufferedWriter writer, TaggedCount count) throws IOException {
+    private void writeCount(WriterContext writer, TaggedCount count) throws IOException {
         writer.write("- ");
         writer.write(count.getTag());
         writer.write(": ");
         writer.write(String.format("%,d", count.getCount()));
-        newLine(writer);
+        writer.newLine();
     }
 
-    private void writeMemoryAmount(BufferedWriter writer, String tag, MemoryAmount amount, MemoryAmount diff) throws
+    private void writeMemoryAmount(WriterContext writer, String tag, MemoryAmount amount, MemoryAmount diff) throws
             IOException {
         writer.write(tag);
         writer.write(": ");
@@ -143,6 +158,6 @@ public class MarkdownReportWriter implements NMTReportWriter {
             writer.write(diff.getUnit().toString());
             writer.write(")");
         }
-        newLine(writer);
+        writer.newLine();
     }
 }

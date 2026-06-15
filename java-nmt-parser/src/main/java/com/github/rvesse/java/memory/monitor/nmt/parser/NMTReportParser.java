@@ -6,7 +6,14 @@ import org.apache.commons.lang3.Strings;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
+import java.util.*;
 
 /**
  * A parser for Java native memory tracking reports
@@ -15,6 +22,8 @@ public class NMTReportParser implements AutoCloseable {
 
     private final BufferedReader reader;
     private long lineNumber = 0;
+    private File inputFile = null;
+    private Instant timestamp = null;
 
     NMTReportParser(InputStream input) {
         this.reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
@@ -22,6 +31,40 @@ public class NMTReportParser implements AutoCloseable {
 
     NMTReportParser(File reportFile) throws FileNotFoundException {
         this(new FileInputStream(reportFile));
+        this.inputFile = reportFile;
+
+        // See if the filename includes a timestamp we can parse
+        // e.g. search-projector-5c9c7c669-wb5dk_search-projector_native-memory-20260605_101024.txt
+        String[] parts = reportFile.getName().split("-");
+        if (parts.length > 1) {
+            String lastPart = parts[parts.length - 1];
+            lastPart = lastPart.substring(0, lastPart.indexOf('.'));
+
+            try {
+                TemporalAccessor parsed = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss").parse(lastPart);
+                Calendar date = Calendar.getInstance();
+                date.set(parsed.get(ChronoField.YEAR_OF_ERA),
+                          parsed.get(ChronoField.MONTH_OF_YEAR),
+                          parsed.get(ChronoField.DAY_OF_MONTH),
+                          parsed.get(ChronoField.HOUR_OF_DAY),
+                          parsed.get(ChronoField.MINUTE_OF_HOUR),
+                          parsed.get(ChronoField.MICRO_OF_SECOND));
+                this.timestamp = date.toInstant();
+            } catch (DateTimeParseException dtEx) {
+                // Ignored, will try and use file creation time instead
+            }
+        }
+        // If no valid timestamp in filename use file creation time (if available)
+        if (this.timestamp == null) {
+            try {
+                this.timestamp =
+                        Files.readAttributes(reportFile.toPath(), BasicFileAttributes.class)
+                             .creationTime()
+                             .toInstant();
+            } catch (IOException ioEx) {
+                // Ignored
+            }
+        }
     }
 
     public static NMTReport parse(File reportFile) throws Exception {
@@ -36,8 +79,43 @@ public class NMTReportParser implements AutoCloseable {
         }
     }
 
+    /**
+     * Parses a sequence of reports from a directory
+     *
+     * @param reportDir      Report directory
+     * @param filenamePrefix Filename prefix used to limit which reports are parsed
+     * @return NMT Report sequence
+     * @throws Exception Thrown if a parsing or IO error occurs
+     */
+    public static NMTReportSequence parseReports(File reportDir, String filenamePrefix) throws Exception {
+        Objects.requireNonNull(reportDir, "Report Directory cannot be null");
+        if (!reportDir.exists() || !reportDir.isDirectory()) {
+            throw new IllegalArgumentException("Report Directory must be a directory that exists");
+        }
+
+        FilenameFilter filter;
+        if (StringUtils.isNotBlank(filenamePrefix)) {
+            filter = (dir, name) -> Strings.CS.startsWith(name, filenamePrefix);
+        } else {
+            filter = (dir, name) -> true;
+        }
+        File[] reportFiles = reportDir.listFiles(filter);
+        if (reportFiles != null) {
+            List<NMTReport> reports = new ArrayList<>();
+            for (File reportFile : reportFiles) {
+                reports.add(parse(reportFile));
+            }
+            reports.sort(Comparator.comparing(NMTReport::getTimestamp));
+
+            return NMTReportSequence.builder().reports(reports).build();
+        } else {
+            throw new IllegalArgumentException(
+                    "Failed to list any files from report directory " + reportDir.getAbsolutePath());
+        }
+    }
+
     public NMTReport parse() throws IOException {
-        NMTReport.NMTReportBuilder builder = NMTReport.builder();
+        NMTReport.NMTReportBuilder builder = NMTReport.builder().timestamp(this.timestamp);
 
         String line;
         ParserState state = ParserState.Pid;
@@ -59,8 +137,12 @@ public class NMTReportParser implements AutoCloseable {
                         parts = line.split(":", 1);
                         if (StringUtils.isNumeric(parts[0])) {
                             builder.pid(Long.parseLong(parts[0]));
+                        } else if (Objects.equals(parts[0], "Native memory tracking is not enabled")) {
+                            // Report against a Java process that didn't have the feature enabled so nothing to parse
+                            return builder.enabled(false).build();
                         } else if (Objects.equals(parts[0], "Native Memory Tracking:")) {
                             state = ParserState.Memory;
+                            builder.enabled(true);
                             continue;
                         }
                         break;
@@ -82,9 +164,11 @@ public class NMTReportParser implements AutoCloseable {
                             parts = line.split("\\(", 2);
                             subCategoryMemory.label(StringUtils.stripStart(parts[0], "- ").trim());
                             parseTotal(subCategoryMemory, parts[1]);
-                        } else if (Strings.CI.equals(line, "Virtual memory map:")) {
-                            memory.subCategory(subCategoryMemory.build());
-                            subCategoryMemory = null;
+                        } else if (Strings.CI.equals(line, "Virtual memory map:") || line.startsWith("[")) {
+                            if (subCategoryMemory != null) {
+                                memory.subCategory(subCategoryMemory.build());
+                                subCategoryMemory = null;
+                            }
                             state = ParserState.Details;
                             continue;
                         } else {
@@ -215,7 +299,8 @@ public class NMTReportParser implements AutoCloseable {
                 if (Objects.equals(parts[2], "at") && Objects.equals(parts[3], "peak")) {
                     builder.peak(usage).peakCount(count);
                 } else {
-                    builder.peak(parseMemoryAmount(parts[2].substring(parts[2].indexOf('=') + 1))).peakCount(parseCount(parts[3]));
+                    builder.peak(parseMemoryAmount(parts[2].substring(parts[2].indexOf('=') + 1)))
+                           .peakCount(parseCount(parts[3]));
                 }
             }
         }
@@ -320,7 +405,13 @@ public class NMTReportParser implements AutoCloseable {
     }
 
     private IOException parseError(String message, Object... args) {
-        return new IOException("[Line " + this.lineNumber + "] " + String.format(message, args));
+        if (this.inputFile != null) {
+            return new IOException(
+                    "[" + this.inputFile.getAbsolutePath() + " Line " + this.lineNumber + "] " + String.format(message,
+                                                                                                               args));
+        } else {
+            return new IOException("[Line " + this.lineNumber + "] " + String.format(message, args));
+        }
     }
 
     @Override

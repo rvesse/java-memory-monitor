@@ -29,6 +29,7 @@
         <plugin.surefire>3.5.4</plugin.surefire>
 
         <dependency.airline>3.2.0</dependency.airline>
+        <dependency.commons-csv>1.14.1</dependency.commons-csv>
         <dependency.commons-lang>3.20.0</dependency.commons-lang>
         <dependency.jackson>2.22.0</dependency.jackson>
         <dependency.lombok>1.18.46</dependency.lombok>
@@ -59,6 +60,12 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
                 <version>${dependency.commons-lang}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-csv</artifactId>
+                <version>${dependency.commons-csv}</version>
             </dependency>
 
             <dependency>

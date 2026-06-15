@@ -1,0 +1,101 @@
+7:
+
+Native Memory Tracking:
+
+(Omitting categories weighting less than 1MB)
+
+Total: reserved=4629MB +13MB, committed=1665MB -25MB
+
+-                 Java Heap (reserved=4096MB, committed=1404MB -40MB)
+                            (mmap: reserved=4096MB, committed=1404MB -40MB)
+ 
+-                     Class (reserved=82MB, committed=13MB +1MB)
+                            (classes #19064 +996)
+                            (  instance classes #17847 +941, array classes #1217 +55)
+                            (malloc=2MB #50000 +2234)
+                            (mmap: reserved=80MB, committed=11MB +1MB)
+                           : (  Metadata)
+                            (    reserved=128MB, committed=79MB +4MB)
+                            (    used=79MB +4MB)
+                            (    waste=0MB =0.50%)
+                           : (  Class space)
+                            (    reserved=80MB, committed=11MB +1MB)
+                            (    used=11MB +1MB)
+                            (    waste=0MB =2.36%)
+ 
+-                    Thread (reserved=65MB +3MB, committed=6MB)
+                            (thread #65 +3)
+                            (stack: reserved=65MB +3MB, committed=6MB)
+ 
+-                      Code (reserved=67MB, committed=27MB)
+                            (malloc=2MB #9982 -1318)
+                            (mmap: reserved=65MB, committed=25MB)
+ 
+-                        GC (reserved=125MB, committed=73MB)
+                            (malloc=13MB #14989 -566)
+                            (mmap: reserved=112MB, committed=60MB -1MB)
+ 
+-                  Compiler (reserved=1MB, committed=1MB)
+ 
+-                  Internal (reserved=3MB, committed=3MB)
+                            (malloc=3MB #18216 +1348)
+ 
+-                     Other (reserved=1MB, committed=1MB)
+                            (malloc=1MB #61 +14)
+ 
+-                    Symbol (reserved=29MB +1MB, committed=29MB +1MB)
+                            (malloc=25MB +1MB #235115 +10297)
+                            (arena=4MB #1)
+ 
+-    Native Memory Tracking (reserved=6MB, committed=6MB)
+                            (malloc=1MB #7091 +2950)
+                            (tracking overhead=5MB)
+ 
+-        Shared class space (reserved=16MB, committed=12MB)
+                            (mmap: reserved=16MB, committed=12MB)
+ 
+-               Arena Chunk (reserved=10MB +8MB, committed=10MB +8MB)
+                            (malloc=10MB +8MB)
+ 
+-                 Metaspace (reserved=128MB, committed=79MB +4MB)
+                            (mmap: reserved=128MB, committed=79MB +4MB)
+ 
+[0x00007fdb8b7fbf23]Arena::grow(unsigned long, AllocFailStrategy::AllocFailEnum)+0x63
+[0x00007fdb8c11e3c9]PhaseChaitin::post_allocate_copy_removal()+0x1b39
+[0x00007fdb8b97f85a]PhaseChaitin::Register_Allocate()+0x97a
+[0x00007fdb8ba280b6]Compile::Code_Gen()+0x326
+                             (malloc=2MB type=Arena Chunk +1MB #49 +35)
+
+[0x00007fdb8c2fe494]SymbolTable::do_add_if_needed(char const*, int, unsigned long, bool)+0x164
+[0x00007fdb8c2ff119]SymbolTable::new_symbols(ClassLoaderData*, constantPoolHandle const&, int, char const**, int*, int*, unsigned int*)+0x59
+[0x00007fdb8b9d1f32]ClassFileParser::parse_constant_pool_entries(ClassFileStream const*, ConstantPool*, int, JavaThread*)+0xc82
+[0x00007fdb8b9d2306]ClassFileParser::parse_stream(ClassFileStream const*, JavaThread*) [clone .part.0]+0x166
+                             (malloc=16MB type=Symbol +1MB #136824 +5656)
+
+[0x00007fdb8c3d5d2b]ReservedSpace::reserve(unsigned long, unsigned long, unsigned long, char*, bool)+0x33b
+[0x00007fdb8c3d66a0]ReservedHeapSpace::try_reserve_range(char*, char*, unsigned long, char*, char*, unsigned long, unsigned long, unsigned long)+0x140
+[0x00007fdb8c3d69bc]ReservedHeapSpace::initialize_compressed_heap(unsigned long, unsigned long, unsigned long)+0x25c
+[0x00007fdb8c3d72b9]ReservedHeapSpace::ReservedHeapSpace(unsigned long, unsigned long, unsigned long, char const*)+0x1a9
+                             (mmap: reserved=4096MB, committed=1404MB -40MB Type=Java Heap)
+
+[0x00007fdb8c3d5e70]ReservedSpace::reserve(unsigned long, unsigned long, unsigned long, char*, bool)+0x480
+[0x00007fdb8bb868d9]G1CollectedHeap::create_aux_memory_mapper(char const*, unsigned long, unsigned long)+0x39
+[0x00007fdb8bb8c087]G1CollectedHeap::initialize()+0x2d7
+[0x00007fdb8c381366]universe_init()+0xd6
+                             (mmap: reserved=64MB, committed=22MB -1MB Type=GC)
+
+[0x00007fdb8c0cebab]os::reserve_memory_aligned(unsigned long, unsigned long, bool)+0x2b
+[0x00007fdb8c3d5e9f]ReservedSpace::reserve(unsigned long, unsigned long, unsigned long, char*, bool)+0x4af
+[0x00007fdb8c3d6246]ReservedSpace::ReservedSpace(unsigned long, unsigned long, unsigned long, char*)+0x56
+[0x00007fdb8c032c44]Metaspace::reserve_address_space_for_compressed_classes(unsigned long)+0x24
+                             (mmap: reserved=96MB, committed=23MB +1MB Type=Class)
+
+[0x00007fdb8c0cebab]os::reserve_memory_aligned(unsigned long, unsigned long, bool)+0x2b
+[0x00007fdb8c3d5e9f]ReservedSpace::reserve(unsigned long, unsigned long, unsigned long, char*, bool)+0x4af
+[0x00007fdb8c3d6246]ReservedSpace::ReservedSpace(unsigned long, unsigned long, unsigned long, char*)+0x56
+[0x00007fdb8c3d4b65]metaspace::VirtualSpaceNode::create_node(unsigned long, metaspace::CommitLimiter*, metaspace::AbstractCounter<unsigned long>*, metaspace::AbstractCounter<unsigned long>*)+0x55
+                             (mmap: reserved=64MB, committed=15MB +4MB Type=Metaspace)
+
+[0x00007fdb8c0c4eda]thread_native_entry(Thread*)+0xda
+                             (mmap: reserved=64MB +3MB, committed=6MB Type=Thread Stack)
+
