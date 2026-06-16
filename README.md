@@ -4,15 +4,15 @@ This repository provides scripts and images designed to solve the problem of mon
 application running in a K8S container when that application container has a minimal image that omits standard Java
 debug tools like `jcmd`, `jmap` etc.
 
-It provides two components that support this, plus additional [Development Helpers](#development-helpers).
+It provides several components that support this, plus additional [Development Helpers](#development-helpers).
 
 1. [`jvmMemoryMonitor.sh`](#jvmmemorymonitorsh)
 2. [`mmapReport.sh`](#mmapreportsh)
 3. [`jvmKubernetesMemoryMonitor.sh`](#jvmkubernetesmemorymonitorsh)
 
-> **IMPORTANT** Both these scripts rely upon GNU `getopt` for option processing, on some OS, e.g. Mac OS X, an older
-> version of `getopt` is installed by default.  Mac users may install this via `brew install gnu-getopt` and then modify
-> their `PATH` to make it the default `getopt` used.
+> **IMPORTANT** Several of these scripts rely upon GNU `getopt` for option processing, on some OS, e.g. Mac OS X, an
+> older version of `getopt` is installed by default.  Mac users may install this via `brew install gnu-getopt` and then
+> modify their `PATH` to make it the default `getopt` used.
 
 ## `jvmMemoryMonitor.sh`
 
