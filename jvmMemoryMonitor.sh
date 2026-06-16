@@ -444,6 +444,7 @@ while true; do
     fi
   fi
 
+  # Track Memory Mapped files if enabled
   if [ -n "${MAPPED_FILES}" ]; then
     echo "Dumping Memory Mapped files report to /tmp/${MAPPED_FILES_DUMP_NAME}..."
 
@@ -456,9 +457,9 @@ while true; do
             JAVA_PID=""
             sleepBeforeNextDump
             continue
-        else
-          echo "[READY] ${MAPPED_FILES_DUMP_NAME}"
         fi
+    else
+      echo "[READY] ${MAPPED_FILES_DUMP_NAME}"
     fi
   fi
 
