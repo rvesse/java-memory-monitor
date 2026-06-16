@@ -459,7 +459,7 @@ while true; do
             continue
         fi
     else
-      echo "[READY] ${MAPPED_FILES_DUMP_NAME}"
+      echo "[READY] /tmp/${MAPPED_FILES_DUMP_NAME}"
     fi
   fi
 
