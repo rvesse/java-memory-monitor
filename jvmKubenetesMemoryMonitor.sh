@@ -294,6 +294,8 @@ while IFS=$'\n' read -r LINE; do
     COPY_FILE="${COPY_FILE}.gz"
     LOCAL_COPY_FILE=${LOCAL_COPY_FILE}.gz
   else
+    # Only heap dumps are written in the application container, any other dump
+    # files are written in the debug container
     COPY_CONTAINER=${DEBUG_CONTAINER}
   fi
 

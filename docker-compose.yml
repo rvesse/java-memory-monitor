@@ -14,6 +14,7 @@ services:
       - --dump-interval
       - "10"
       - --no-heap-dumps
+      - --mapped-files
       - --baseline
       - --limit
       - "300"

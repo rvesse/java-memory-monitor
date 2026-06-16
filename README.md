@@ -7,7 +7,8 @@ debug tools like `jcmd`, `jmap` etc.
 It provides two components that support this, plus additional [Development Helpers](#development-helpers).
 
 1. [`jvmMemoryMonitor.sh`](#jvmmemorymonitorsh)
-2. [`jvmKubernetesMemoryMonitor.sh`](#jvmkubernetesmemorymonitorsh)
+2. [`mmapReport.sh`](#mmapreportsh)
+3. [`jvmKubernetesMemoryMonitor.sh`](#jvmkubernetesmemorymonitorsh)
 
 > **IMPORTANT** Both these scripts rely upon GNU `getopt` for option processing, on some OS, e.g. Mac OS X, an older
 > version of `getopt` is installed by default.  Mac users may install this via `brew install gnu-getopt` and then modify
@@ -23,10 +24,11 @@ container which has the Java process whose memory you wish to monitor.  This rep
 Run the script with just the `--help` option to see help for the script.
 
 The script detects the Java process (or may be configured explicitly with a Java process to monitor) and then
-periodically takes memory dumps, two kinds of memory dumps may be taken:
+periodically takes memory dumps, the following kinds of memory dumps may be taken:
 
 - Java [Heap Dumps](#heap-dumps) (disabled by the `--no-heap-dumps` option)
 - Java [Native Memory Tracking](#native-memory-tracking) (disabled by the `--no-native-memory` option)
+- [Memory Mapped Files](#memory-mapped-files) (enabled by the `--mapped-files` option)
 
 Dumps are taken every 180 seconds (3 minutes) by default but this can be configured via the `--dump-interval` option.
 You may also choose to limit how long the script takes dumps for via the `--limit` option, when specified dumps are only
@@ -50,10 +52,18 @@ to the script.  Additionally if you are looking to understand memory usage over 
 generate dumps with diffs versus a baseline by specifying the `--baseline` option.  When that option is specified a
 baseline is taken and then subsequent dumps are diffs from that original baseline.
 
-#### Native Memory Dump Cleanup
+### Memory Mapped Files
 
-Native memory dumps are typically small (2-4KB) but the script will periodically remove old dump files to avoid ever
-growing disk usage.  By default this happens every 900 seconds (15 minutes) but this can be configured via the
+When the `--mapped-files` option is specified the script will also take a dump of the processes memory mapped file usage
+using the [`mmapReport.sh`](#mmapreportsh) helper script.
+
+> **NB** This dump is opt-in only, i.e. you must explicitly enable it, as opposed to the other dump types which you must
+> explicitly disable to opt-out of.
+
+### Memory Dump Cleanup
+
+Memory dumps are typically small (1-10KB) but the script will periodically remove old dump files to avoid ever growing
+disk usage.  By default this happens every 900 seconds (15 minutes) but this can be configured via the
 `--cleanup-interval` option.
 
 ### Dead Process Detection
@@ -70,6 +80,65 @@ terminated.
 ### Signals
 
 A `SIGINT` or `SIGTERM` to the script will abort memory monitoring and cause the script to exit.
+
+## `mmapReport.sh`
+
+This script is a Bash script designed to provide an overview of what memory mapped files a process is using and how much
+of each file is currently resident in memory since the OS will page out mapped file segments automatically.  This script
+works for any process that is currently running provided the OS has a `/proc` filesystem available to query the memory
+maps information from.
+
+This script is used as a helper by [`jvmMemoryMonitor.sh`](#jvmmemorymonitorsh) when the `-m` or `--mapped-files`
+options are specified.  An example report looks like the following:
+
+```
+PID 7
+
+Found 29 memory mapped files
+
+Rss: 174508 KB
+Referenced: 174508 KB
+
+File #Maps Rss
+/opt/java/openjdk/bin/java 3 12 KB
+/opt/java/openjdk/lib/libjava.so 4 144 KB
+/opt/java/openjdk/lib/libjimage.so 4 76 KB
+/opt/java/openjdk/lib/libjli.so 4 100 KB
+/opt/java/openjdk/lib/libnet.so 4 56 KB
+/opt/java/openjdk/lib/libnio.so 4 88 KB
+/opt/java/openjdk/lib/modules 1 1040 KB
+/opt/java/openjdk/lib/server/classes.jsa 3 13956 KB
+/opt/java/openjdk/lib/server/libjvm.so 4 15588 KB
+/tmp/hsperfdata_root/7 1 32 KB
+/usr/lib64/gconv/gconv-modules.cache 1 4 KB
+/usr/lib64/libc.so.6 4 1292 KB
+/usr/lib64/libdl.so.2 4 12 KB
+/usr/lib64/libm.so.6 4 72 KB
+/usr/lib64/libpthread.so.0 4 12 KB
+/usr/lib64/librt.so.1 4 12 KB
+/usr/lib/ld-linux-aarch64.so.1 3 188 KB
+/usr/lib/locale/C.utf8/LC_CTYPE 1 124 KB
+/usr/lib/locale/en_US.utf8/LC_ADDRESS 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_COLLATE 1 168 KB
+/usr/lib/locale/en_US.utf8/LC_IDENTIFICATION 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_MEASUREMENT 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_MESSAGES/SYS_LC_MESSAGES 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_MONETARY 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_NAME 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_NUMERIC 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_PAPER 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_TELEPHONE 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_TIME 1 4 KB
+
+Largest Memory Mapped File: /opt/java/openjdk/lib/server/libjvm.so 15588 KB
+```
+
+It first indicates the process PID and how many memory mapped files are currently in use by the process.  It then
+provides summaries of the resident memory usage (`Rss`) and referenced memory usage by these files.  This is followed by
+a table which indicates how much resident memory is used by each memory mapped file.  As files may not be mapped
+completely into memory, only segments thereof, this table indicates the filename, the number of currently mapped
+segments, and the total consumed resident memory for that file.  Finally the report indicates the memory mapped file
+that is the largest, i.e., the one consuming the most resident memory.
 
 ## `jvmKubernetesMemoryMonitor.sh`
 

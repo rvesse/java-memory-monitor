@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+SCRIPT_DIR=$(cd "${SCRIPT_DIR}" && pwd)
+
 # Helper Functions
 function blankLine() {
     echo ""
@@ -52,8 +55,8 @@ OPTIONS
 
   --cleanup-interval <seconds>
 
-    Sets the cleanup interval in seconds after which any native memory dump files are 
-    automatically removed.
+    Sets the cleanup interval in seconds after which any memory dump files are automatically 
+    removed.
 
     Defaults to 900 seconds (15 minutes).
 
@@ -104,6 +107,14 @@ OPTIONS
     Specifies the maximum amount of time in seconds that the JVM process will be monitored
     for.  Once this limit is reached then the script will exit.
 
+  -m
+  --mapped-files
+
+    Sets that a report of memory mapped file usage will be dumped.  This is driven by 
+    inspecting the /proc/ filesystem so won't work on OSes without that.
+
+    Off by default, must be explicitly enabled.
+
   --scale KB|MB|GB
 
     Specifies the scale to track native memory in, one of KB, MB or GB, defaults to MB.
@@ -125,8 +136,8 @@ USAGE EXAMPLES
 EOF
 }
 
-TEMP=$(getopt -o bcdhi:j:l:s \
-              --long baseline,continue-on-jvm-failure,detail,heap-dumps,dump-interval:,java-pid:,limit:,summary,no-continue-on-jvm-failure,no-heap-dumps,no-native-memory,cleanup-interval:,scale:,help \
+TEMP=$(getopt -o bcdhi:j:l:ms \
+              --long baseline,continue-on-jvm-failure,detail,heap-dumps,dump-interval:,java-pid:,limit:,mapped-files,summary,no-continue-on-jvm-failure,no-heap-dumps,no-native-memory,cleanup-interval:,scale:,help \
               -n 'jvmHeapMonitor.sh' -- "$@")
 
 if [ $? != 0 ] ; then 
@@ -143,6 +154,7 @@ JAVA_PID=
 LIMIT=-1
 HEAP_DUMPS=true
 NATIVE_MEMORY=summary
+MAPPED_FILES=
 SCALE=MB
 
 while [ true ]; do
@@ -195,6 +207,10 @@ while [ true ]; do
         exit 1
       fi
       shift 2
+      ;;
+    -m | --mapped-files )
+      MAPPED_FILES=true
+      shift
       ;;
     -s | --summary ) 
       NATIVE_MEMORY=summary
@@ -269,6 +285,7 @@ if [ -n "${NATIVE_MEMORY}" ]; then
   enabledOrDisabled "  Baseline:" ${BASELINE}
   echo "  Tracking Mode: ${NATIVE_MEMORY}"
 fi
+enabledOrDisabled "Memory Mapped Files:" ${MAPPED_FILES}
 echo "Dump Interval: ${DUMP_INTERVAL} seconds"
 echo "  Cleanup Interval: ${CLEANUP_INTERVAL} seconds"
 if [ "${LIMIT}" -gt 0 ]; then
@@ -341,8 +358,9 @@ while true; do
   CLEANUP_ELAPSED=$(( ${SECONDS} - ${LAST_CLEANUP}))
   if [ "${CLEANUP_ELAPSED}" -ge "${CLEANUP_INTERVAL}" ]; then
     title "Dump Cleanup"
-    echo "Cleaning up native memory dumps..."
+    echo "Cleaning up memory dumps..."
     rm -Rf /tmp/native-memory*
+    rm -Rf /tmp/mapped-files*
     echo "Cleanup completed"
     LAST_CLEANUP=${SECONDS}
   fi
@@ -372,6 +390,7 @@ while true; do
   NAME="$(date +%Y%m%d_%H%M%S)"
   DUMP_NAME="heap-dump-${NAME}.hprof"
   NATIVE_DUMP_NAME="native-memory-${NAME}.txt"
+  MAPPED_FILES_DUMP_NAME="mapped-files-${NAME}.txt"
 
   title "Dump ${NAME}"
 
@@ -422,6 +441,24 @@ while true; do
       else
         echo "[READY] /tmp/${NATIVE_DUMP_NAME}"
       fi
+    fi
+  fi
+
+  if [ -n "${MAPPED_FILES}" ]; then
+    echo "Dumping Memory Mapped files report to /tmp/${MAPPED_FILES_DUMP_NAME}..."
+
+    ${SCRIPT_DIR}/mmapReport.sh ${JAVA_PID} > /tmp/${MAPPED_FILES_DUMP_NAME}
+    if [ $? -ne 0 ]; then
+        echo "Failed to track memory mapped files, checking whether the monitored Java process is still alive..."
+        jps | grep "${JAVA_PID}" > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "Monitored Java process with PID ${JAVA_PID} is no longer alive, will re-detect the Java process to monitor for the next dump..."
+            JAVA_PID=""
+            sleepBeforeNextDump
+            continue
+        else
+          echo "[READY] ${MAPPED_FILES_DUMP_NAME}"
+        fi
     fi
   fi
 
