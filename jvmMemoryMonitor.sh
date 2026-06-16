@@ -161,7 +161,7 @@ while [ true ]; do
         echo "Cleanup interval must be a positive integer representing the number of seconds to wait between cleaning up dumps" >&2
         exit 1
       fi
-      shift
+      shift 2
       ;;
     -d | --detail ) 
       NATIVE_MEMORY=detail

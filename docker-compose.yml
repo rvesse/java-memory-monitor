@@ -5,7 +5,7 @@ services:
       context: ./loiter/src
       dockerfile: Dockerfile
   memory-monitor:
-    image: jvm-memory-monitor:latest
+    image: java-memory-monitor:latest
     build:
       context: .
       dockerfile: Dockerfile
