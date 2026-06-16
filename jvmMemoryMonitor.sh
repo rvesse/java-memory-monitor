@@ -253,8 +253,8 @@ while [ true ]; do
 done
 
 # Must have either heap dumps or native memory tracking enabled, otherwise there is no point in running the monitor
-if [ -z "${HEAP_DUMPS}" ] && [ -z "${NATIVE_MEMORY}" ]; then
-  echo "At least one of heap dumps or native memory dumps MUST be enabled" >&2
+if [ -z "${HEAP_DUMPS}" ] && [ -z "${NATIVE_MEMORY}" ] && [ -z "${MAPPED_FILES}" ]; then
+  echo "At least one of heap, native memory or memory mapped file dumps MUST be enabled" >&2
   exit 1
 fi
 
