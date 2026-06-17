@@ -95,50 +95,63 @@ options are specified.  An example report looks like the following:
 PID 7
 
 Found 29 memory mapped files
+Found 5 non-file memory maps
 
-Rss: 174508 KB
-Referenced: 174508 KB
+Total Rss: 72408 KB
+Total Referenced: 72408  KB
+File Rss: 32964 KB
+File Referenced: 32964 KB
+Non-File Rss: 39444 KB
+Non-File Referenced: 39444 KB
 
 File #Maps Rss
-/opt/java/openjdk/bin/java 3 12 KB
-/opt/java/openjdk/lib/libjava.so 4 144 KB
-/opt/java/openjdk/lib/libjimage.so 4 76 KB
-/opt/java/openjdk/lib/libjli.so 4 100 KB
-/opt/java/openjdk/lib/libnet.so 4 56 KB
-/opt/java/openjdk/lib/libnio.so 4 88 KB
-/opt/java/openjdk/lib/modules 1 1040 KB
+/opt/java/openjdk/lib/server/libjvm.so 4 15496 KB
 /opt/java/openjdk/lib/server/classes.jsa 3 13956 KB
-/opt/java/openjdk/lib/server/libjvm.so 4 15588 KB
+/usr/lib64/libc.so.6 4 1368 KB
+/opt/java/openjdk/lib/modules 1 1008 KB
+/usr/lib/ld-linux-aarch64.so.1 3 172 KB
+/usr/lib/locale/C.utf8/LC_CTYPE 1 160 KB
+/usr/lib/locale/en_US.utf8/LC_COLLATE 1 148 KB
+/opt/java/openjdk/lib/libjava.so 4 144 KB
+/opt/java/openjdk/lib/libjli.so 4 100 KB
+/opt/java/openjdk/lib/libnio.so 4 80 KB
+/usr/lib64/libm.so.6 4 76 KB
+/opt/java/openjdk/lib/libjimage.so 4 76 KB
+/opt/java/openjdk/lib/libnet.so 4 56 KB
 /tmp/hsperfdata_root/7 1 32 KB
-/usr/lib64/gconv/gconv-modules.cache 1 4 KB
-/usr/lib64/libc.so.6 4 1292 KB
-/usr/lib64/libdl.so.2 4 12 KB
-/usr/lib64/libm.so.6 4 72 KB
-/usr/lib64/libpthread.so.0 4 12 KB
 /usr/lib64/librt.so.1 4 12 KB
-/usr/lib/ld-linux-aarch64.so.1 3 188 KB
-/usr/lib/locale/C.utf8/LC_CTYPE 1 124 KB
-/usr/lib/locale/en_US.utf8/LC_ADDRESS 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_COLLATE 1 168 KB
-/usr/lib/locale/en_US.utf8/LC_IDENTIFICATION 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_MEASUREMENT 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_MESSAGES/SYS_LC_MESSAGES 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_MONETARY 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_NAME 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_NUMERIC 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_PAPER 1 4 KB
-/usr/lib/locale/en_US.utf8/LC_TELEPHONE 1 4 KB
+/usr/lib64/libpthread.so.0 4 12 KB
+/usr/lib64/libdl.so.2 4 12 KB
+/opt/java/openjdk/bin/java 3 12 KB
 /usr/lib/locale/en_US.utf8/LC_TIME 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_TELEPHONE 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_PAPER 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_NUMERIC 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_NAME 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_MONETARY 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_MESSAGES/SYS_LC_MESSAGES 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_MEASUREMENT 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_IDENTIFICATION 1 4 KB
+/usr/lib/locale/en_US.utf8/LC_ADDRESS 1 4 KB
+/usr/lib64/gconv/gconv-modules.cache 1 4 KB
 
-Largest Memory Mapped File: /opt/java/openjdk/lib/server/libjvm.so 15588 KB
+Largest Memory Mapped File: /opt/java/openjdk/lib/server/libjvm.so 15496 KB
 ```
 
-It first indicates the process PID and how many memory mapped files are currently in use by the process.  It then
-provides summaries of the resident memory usage (`Rss`) and referenced memory usage by these files.  This is followed by
-a table which indicates how much resident memory is used by each memory mapped file.  As files may not be mapped
-completely into memory, only segments thereof, this table indicates the filename, the number of currently mapped
-segments, and the total consumed resident memory for that file.  Finally the report indicates the memory mapped file
-that is the largest, i.e., the one consuming the most resident memory.
+It first indicates the process PID and how many memory mapped files are currently in use by the process, as well as how
+many non-file memory maps exist.  Since many applications/libraries, including the JVM, will allocate memory via
+`mmap()` this represents the memory directly allocated by the Java application for both heap and off-heap usage.
+
+It then provides summaries of the resident memory usage (`Rss`) and referenced memory usage by these files and other
+maps.  Total represents total usage, this is then broken down into File and Non-file usage.
+
+This is followed by a table which indicates how much resident memory is used by each memory mapped file.  As files may
+not be mapped completely into memory, only segments thereof, this table indicates the filename, the number of currently
+mapped segments, and the total consumed resident memory for that file.  The table is sorted from largest consumer of
+memory to smallest consumer of memory.
+
+Finally the report indicates the memory mapped file that is the largest, i.e., the one consuming the most resident
+memory.
 
 ## `jvmKubernetesMemoryMonitor.sh`
 
